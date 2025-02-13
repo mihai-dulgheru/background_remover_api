@@ -82,4 +82,4 @@ def remove_background():
 
 if __name__ == "__main__":
     # Run the Flask app using Waitress
-    serve(app, host="0.0.0.0", port=8080, threads=2, connection_limit=500, channel_timeout=120)
+    serve(app, host="0.0.0.0", port=8080)

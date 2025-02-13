@@ -2,7 +2,7 @@ from rembg import new_session
 
 
 def preload_model():
-    new_session("u2net")
+    new_session("u2net_lite")
 
 
 if __name__ == "__main__":

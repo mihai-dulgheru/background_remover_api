@@ -9,7 +9,7 @@ import logging
 
 from PIL import Image
 from flask import Flask, request, send_file, jsonify
-from rembg import remove
+from rembg import remove, new_session
 from waitress import serve
 
 from config import API_KEY
@@ -59,7 +59,8 @@ def remove_background():
     # Step 5: Use rembg to remove the background
     try:
         logging.info("Removing background from the uploaded image.")
-        output_data = remove(image_data)
+        session = new_session("u2net_lite")
+        output_data = remove(image_data, session=session)
     except Exception as e:
         logging.error(f"Error while removing background: {str(e)}")
         return jsonify({"error": "Failed to process the image."}), 500
@@ -68,6 +69,7 @@ def remove_background():
     # We return a PNG by default
     try:
         output_image = Image.open(io.BytesIO(output_data))
+        output_image.thumbnail((1024, 1024))
         img_io = io.BytesIO()
         output_image.save(img_io, format="PNG")
         img_io.seek(0)
@@ -80,4 +82,4 @@ def remove_background():
 
 if __name__ == "__main__":
     # Run the Flask app using Waitress
-    serve(app, host="0.0.0.0", port=8080)
+    serve(app, host="0.0.0.0", port=8080, threads=2, connection_limit=500, channel_timeout=120)

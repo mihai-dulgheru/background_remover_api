@@ -10,6 +10,7 @@ import logging
 from PIL import Image
 from flask import Flask, request, send_file, jsonify
 from rembg import remove
+from waitress import serve
 
 from config import API_KEY
 
@@ -78,5 +79,5 @@ def remove_background():
 
 
 if __name__ == "__main__":
-    # Run the Flask app (development mode)
-    app.run(host="127.0.0.1", port=8080, debug=True)
+    # Run the Flask app using Waitress
+    serve(app, host="0.0.0.0", port=8080)

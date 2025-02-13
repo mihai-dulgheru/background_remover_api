@@ -1,0 +1,13 @@
+name: "background-remover-app"
+services:
+  - name: "web"
+    environment_slug: "docker"
+    dockerfile_path: "./Dockerfile"
+    instance_size_slug: "basic-xxs"
+    routes:
+      - path: "/"
+    envs:
+      - key: "API_KEY"
+        scope: RUN_AND_BUILD
+    build_command: ""
+    run_command: ""

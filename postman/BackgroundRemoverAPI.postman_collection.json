@@ -7,7 +7,7 @@
 	},
 	"item": [
 		{
-			"name": "Health check",
+			"name": "Health Check",
 			"request": {
 				"method": "GET",
 				"header": [],
@@ -21,50 +21,22 @@
 					]
 				}
 			},
-			"response": [
-				{
-					"name": "New Request",
-					"originalRequest": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								""
-							]
-						}
-					},
-					"status": "OK",
-					"code": 200,
-					"_postman_previewlanguage": "json",
-					"header": [
-						{
-							"key": "Content-Length",
-							"value": "54"
-						},
-						{
-							"key": "Content-Type",
-							"value": "application/json"
-						},
-						{
-							"key": "Date",
-							"value": "Thu, 13 Feb 2025 21:15:24 GMT"
-						},
-						{
-							"key": "Server",
-							"value": "waitress"
-						}
-					],
-					"cookie": [],
-					"body": "{\n    \"message\": \"BackgroundRemoverAPI is up and running.\"\n}"
-				}
-			]
+			"response": []
 		},
 		{
-			"name": "Remove Background",
+			"name": "Remove Background (Synchronous Processing)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
 				"header": [
@@ -80,7 +52,7 @@
 						{
 							"key": "image",
 							"type": "file",
-							"src": "/C:/Users/mihai/Downloads/temp/signature.jpeg"
+							"src": []
 						}
 					]
 				},
@@ -91,6 +63,112 @@
 					],
 					"path": [
 						"remove-bg"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Remove Background (Asynchronous Processing)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.collectionVariables.set(\"task_id\", pm.response.json().task_id);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-API-KEY",
+						"value": "{{api_key}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "image",
+							"type": "file",
+							"src": []
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}/remove-bg-async",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"remove-bg-async"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Check Task Status",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/task-status/:task_id",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"task-status",
+						":task_id"
+					],
+					"variable": [
+						{
+							"key": "task_id",
+							"value": "{{task_id}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Retrieve Processed Image",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/get-result/:task_id",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"get-result",
+						":task_id"
+					],
+					"variable": [
+						{
+							"key": "task_id",
+							"value": "{{task_id}}"
+						}
 					]
 				}
 			},
@@ -122,12 +200,16 @@
 	"variable": [
 		{
 			"key": "base_url",
-			"value": "http://localhost:8080/",
+			"value": "http://localhost:8080",
 			"type": "default"
 		},
 		{
+			"key": "task_id",
+			"value": ""
+		},
+		{
 			"key": "api_key",
-			"value": "YOUR_API_KEY_HERE",
+			"value": "<YOUR_API_KEY_HERE>",
 			"type": "default"
 		}
 	]

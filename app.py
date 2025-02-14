@@ -1,23 +1,45 @@
-"""
-This module contains the main Flask application
-that provides a route to remove the background from an uploaded image.
-It uses an API key for authentication.
-"""
-
+import concurrent.futures
 import io
 import logging
+import uuid
 
 from PIL import Image
 from flask import Flask, request, send_file, jsonify
-from rembg import remove, new_session
+from rembg import remove
 from waitress import serve
 
-from config import API_KEY
+from config import API_KEY, session
 
 app = Flask(__name__)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s - %(message)s")
+
+# Thread pool for background processing
+executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+
+# Dictionaries to store task statuses and results
+task_status = {}  # {"task_id": "queued" | "processing" | "completed" | "failed"}
+task_results = {}  # {"task_id": image_data}
+
+
+def validate_request():
+    """
+    Validate the API key and check for an uploaded image.
+    Returns (image_data, None, None) if successful,
+    otherwise (None, response, status_code).
+    """
+    header_api_key = request.headers.get("X-API-KEY")
+    if not header_api_key or header_api_key != API_KEY:
+        logging.warning("Invalid or missing API key.")
+        return None, jsonify({"error": "Invalid or missing API key."}), 403
+
+    if "image" not in request.files:
+        logging.warning("No image file found in the request.")
+        return None, jsonify({"error": "No image file found in the request."}), 400
+
+    file = request.files["image"]
+    return file.read(), None, None
 
 
 @app.route("/")
@@ -32,54 +54,107 @@ def index():
 @app.route("/remove-bg", methods=["POST"])
 def remove_background():
     """
-    Remove background from the uploaded image and return the result.
-    Expects a form-data file with key 'image' and an 'X-API-KEY' in the header.
+    Synchronously remove the background from an uploaded image.
     """
+    image_data, error_response, status_code = validate_request()
+    if error_response:
+        return error_response, status_code
 
-    # Step 1: Check if 'X-API-KEY' header is present
-    header_api_key = request.headers.get("X-API-KEY")
-    if not header_api_key:
-        logging.warning("No API key provided.")
-        return jsonify({"error": "No API key provided."}), 401
-
-    # Step 2: Validate the provided API key
-    if header_api_key != API_KEY:
-        logging.warning("Invalid API key provided.")
-        return jsonify({"error": "Invalid API key."}), 403
-
-    # Step 3: Check if an image has been provided in the request
-    if "image" not in request.files:
-        logging.warning("No image file found in the request.")
-        return jsonify({"error": "No image file found in the request."}), 400
-
-    # Step 4: Read the image from the request
-    file = request.files["image"]
-    image_data = file.read()
-
-    # Step 5: Use rembg to remove the background
     try:
-        logging.info("Removing background from the uploaded image.")
-        session = new_session("u2net_lite")
+        logging.info("Synchronously removing background from image.")
         output_data = remove(image_data, session=session)
-    except Exception as e:
-        logging.error(f"Error while removing background: {str(e)}")
-        return jsonify({"error": "Failed to process the image."}), 500
 
-    # Step 6: Return the image with removed background
-    # We return a PNG by default
-    try:
         output_image = Image.open(io.BytesIO(output_data))
-        output_image.thumbnail((1024, 1024))
         img_io = io.BytesIO()
         output_image.save(img_io, format="PNG")
         img_io.seek(0)
-        logging.info("Returning image with background removed.")
+
+        logging.info("Returning processed image (synchronous mode).")
         return send_file(img_io, mimetype="image/png", as_attachment=False, download_name="output.png")
+
     except Exception as e:
-        logging.error(f"Error while returning processed image: {str(e)}")
-        return jsonify({"error": "Failed to return the processed image."}), 500
+        logging.error(f"Error while processing image: {str(e)}")
+        return jsonify({"error": "Failed to process the image."}), 500
+
+
+@app.route("/remove-bg-async", methods=["POST"])
+def remove_background_async():
+    """
+    Initiate an asynchronous background removal process for the uploaded image.
+    """
+    image_data, error_response, status_code = validate_request()
+    if error_response:
+        return error_response, status_code
+
+    task_id = str(uuid.uuid4())
+    task_status[task_id] = "queued"
+
+    executor.submit(process_image, image_data, task_id)
+
+    logging.info(f"Background task started (task_id={task_id}).")
+    return jsonify({"task_id": task_id, "message": "Processing started, check status later."}), 202
+
+
+def process_image(image_data, task_id):
+    """
+    Process the image to remove its background using rembg.
+    Executed asynchronously.
+    """
+    try:
+        logging.info(f"Processing image in background (task_id={task_id}).")
+        task_status[task_id] = "processing"
+
+        output_data = remove(image_data, session=session)
+
+        output_image = Image.open(io.BytesIO(output_data))
+
+        img_io = io.BytesIO()
+        output_image.save(img_io, format="PNG")
+        img_io.seek(0)
+
+        task_results[task_id] = img_io
+        task_status[task_id] = "completed"
+        logging.info(f"Task {task_id} completed successfully.")
+
+    except Exception as e:
+        logging.error(f"Error while processing image (task_id={task_id}): {str(e)}")
+        task_status[task_id] = "failed"
+
+
+@app.route("/task-status/<task_id>", methods=["GET"])
+def get_task_status(task_id):
+    """
+    Check the status of a background image processing task.
+    """
+
+    status = task_status.get(task_id)
+
+    if status is None:
+        logging.warning(f"Task ID {task_id} not found.")
+        return jsonify({"error": "Invalid task ID."}), 404
+
+    return jsonify({"task_id": task_id, "status": status}), 200
+
+
+@app.route("/get-result/<task_id>", methods=["GET"])
+def get_result(task_id):
+    """
+    Retrieve the processed image if the task is completed.
+    """
+
+    if task_status.get(task_id) != "completed":
+        logging.warning(f"Task {task_id} is not yet completed or failed.")
+        return jsonify({"error": "Task not completed or invalid task ID."}), 400
+
+    result = task_results.pop(task_id, None)
+    task_status.pop(task_id, None)
+
+    if result is None:
+        return jsonify({"error": "Image result not found."}), 500
+
+    logging.info(f"Returning processed image for task {task_id}.")
+    return send_file(result, mimetype="image/png", as_attachment=False, download_name="output.png")
 
 
 if __name__ == "__main__":
-    # Run the Flask app using Waitress
     serve(app, host="0.0.0.0", port=8080)

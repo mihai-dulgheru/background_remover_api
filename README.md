@@ -22,7 +22,9 @@ authentication.
 ## Features
 
 - **Background removal** using the `rembg` library.
-- **API key authentication** to secure the endpoint.
+- **API key authentication** to secure the endpoints.
+- **Supports both synchronous and asynchronous processing** for improved performance.
+- **Task-based processing** with status tracking.
 - **Easy deployment** on DigitalOcean or any cloud provider.
 - Includes a script to **generate new API keys**.
 
@@ -31,19 +33,26 @@ authentication.
 ## Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://your-repo-url background_remover_api
    ```
+
 2. Change directory:
+
    ```bash
    cd background_remover_api
    ```
+
 3. Create and activate a virtual environment (optional but recommended):
+
    ```bash
    python3 -m venv venv
-   source venv/bin/activate
+   source venv/bin/activate  # On Windows use `venv\\Scripts\\activate`
    ```
+
 4. Install dependencies:
+
    ```bash
    pip install -r requirements.txt
    ```
@@ -53,15 +62,20 @@ authentication.
 ## Usage
 
 1. **Generate an API key** (optional, if you want to change the default key):
+
    ```bash
    python generate_api_key.py
    ```
+
     - Copy the generated key, and either set it as an environment variable (`API_KEY`) or place it in `config.py`.
-2. **Run the server** (development mode):
+
+2. **Run the server** (production mode using Waitress):
+
    ```bash
    python app.py
    ```
-3. The API will be running at `http://localhost:5000` by default.
+
+3. The API will be running at `http://localhost:8080` by default.
 
 ---
 
@@ -80,22 +94,29 @@ Or in DigitalOcean App Platform, set the environment variable in the project's "
 
 ## Endpoints
 
-1. **Health check**  
-   **URL**: `GET /`  
-   **Response**:
-   ```json
-   {
-     "message": "BackgroundRemoverAPI is up and running."
-   }
-   ```
+### 1. **Health Check**
 
-2. **Remove Background**  
-   **URL**: `POST /remove-bg`  
-   **Headers**:
-    - `X-API-KEY: YOUR_API_KEY_HERE`
-      **Body** (`multipart/form-data`):
-    - `image`: The image file (jpg, png, etc.) to be processed.
-      **Response**: Returns a PNG image with the background removed.
+**URL**: `GET /`  
+**Response**:
+
+```json
+{
+  "message": "BackgroundRemoverAPI is up and running."
+}
+```
+
+### 2. **Remove Background (Synchronous Processing)**
+
+**URL**: `POST /remove-bg`  
+**Headers**:
+
+- `X-API-KEY: YOUR_API_KEY_HERE`
+
+**Body** (`multipart/form-data`):
+
+- `image`: The image file (jpg, png, etc.) to be processed.
+
+**Response**: Returns a PNG image with the background removed.
 
 **Example using `curl`**:
 
@@ -103,7 +124,59 @@ Or in DigitalOcean App Platform, set the environment variable in the project's "
 curl -X POST \
   -H "X-API-KEY: YOUR_API_KEY_HERE" \
   -F "image=@/path/to/image.jpg" \
-  http://localhost:5000/remove-bg --output output.png
+  http://localhost:8080/remove-bg --output output.png
+```
+
+### 3. **Remove Background (Asynchronous Processing)**
+
+**URL**: `POST /remove-bg-async`  
+**Headers**:
+
+- `X-API-KEY: YOUR_API_KEY_HERE`
+
+**Body** (`multipart/form-data`):
+
+- `image`: The image file (jpg, png, etc.) to be processed.
+
+**Response**:
+
+```json
+{
+  "task_id": "your-task-id",
+  "message": "Processing started, check status later."
+}
+```
+
+**Example using `curl`**:
+
+```bash
+curl -X POST \
+  -H "X-API-KEY: YOUR_API_KEY_HERE" \
+  -F "image=@/path/to/image.jpg" \
+  http://localhost:8080/remove-bg-async
+```
+
+### 4. **Check Task Status**
+
+**URL**: `GET /task-status/<task_id>`  
+**Response**:
+
+```json
+{
+  "task_id": "your-task-id",
+  "status": "queued | processing | completed | failed"
+}
+```
+
+### 5. **Retrieve Processed Image**
+
+**URL**: `GET /get-result/<task_id>`  
+**Response**: Returns a PNG image if processing is completed.
+
+**Example using `curl`**:
+
+```bash
+curl -X GET http://localhost:8080/get-result/your-task-id --output output.png
 ```
 
 ---
@@ -112,6 +185,7 @@ curl -X POST \
 
 - This project uses a simple API Key mechanism.
 - For production, ensure that HTTPS is used so the API key is sent securely.
+- Avoid exposing the API key in client-side applications.
 
 ---
 

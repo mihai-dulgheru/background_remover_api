@@ -1,14 +1,13 @@
-"""
-This script generates a secure random API key and can optionally
-update your config.py file with the new key.
-"""
-
 import secrets
 
 
 def generate_api_key():
     """
-    Generate a secure random API key (64 hex characters).
+    Generates a secure random API key using a 32-byte hex token.
+    This API key can be used for authentication in the application.
+
+    Returns:
+        str: A randomly generated API key in hexadecimal format.
     """
     return secrets.token_hex(32)
 

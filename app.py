@@ -1,6 +1,8 @@
 import concurrent.futures
 import io
 import logging
+import signal
+import sys
 import uuid
 
 from PIL import Image
@@ -15,11 +17,20 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s - %(message)s")
 
 # Thread pool for background processing
-executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
 # Dictionaries to store task statuses and results
 task_status = {}  # {"task_id": "queued" | "processing" | "completed" | "failed"}
 task_results = {}  # {"task_id": image_data}
+
+
+def graceful_shutdown(_signum, _frame):
+    logging.info("Received shutdown signal, cleaning up...")
+    executor.shutdown(wait=False)
+    sys.exit(0)
+
+
+signal.signal(signal.SIGTERM, graceful_shutdown)
 
 
 def validate_request():
@@ -47,7 +58,7 @@ def index():
     Root endpoint providing a health check message.
     """
     logging.info("Health check triggered on '/' endpoint.")
-    return jsonify({"message": "BackgroundRemoverAPI is up and running."})
+    return jsonify({"message": "BackgroundRemoverAPI is up and running."}), 200
 
 
 @app.route("/remove-bg", methods=["POST"])

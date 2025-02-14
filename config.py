@@ -8,7 +8,7 @@ API_KEY = os.environ.get("API_KEY", "<YOUR_API_KEY_HERE>")
 
 # Define the model used for background removal.
 # You can change "u2net" to "isnet-general-use" for better quality results.
-model_name = "isnet-general-use"
+model_name = "u2net"
 
 # Create a new session for the selected model.
 # This session will be used to process images throughout the application.

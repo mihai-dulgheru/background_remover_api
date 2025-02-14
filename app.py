@@ -1,8 +1,6 @@
 import concurrent.futures
 import io
 import logging
-import signal
-import sys
 import uuid
 
 from PIL import Image
@@ -22,15 +20,6 @@ executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 # Dictionaries to store task statuses and results
 task_status = {}  # {"task_id": "queued" | "processing" | "completed" | "failed"}
 task_results = {}  # {"task_id": image_data}
-
-
-def graceful_shutdown(_signum, _frame):
-    logging.info("Received shutdown signal, cleaning up...")
-    executor.shutdown(wait=False)
-    sys.exit(0)
-
-
-signal.signal(signal.SIGTERM, graceful_shutdown)
 
 
 def validate_request():
@@ -167,4 +156,6 @@ def get_result(task_id):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080, debug=True)
+    from waitress import serve
+
+    serve(app, listen='*:8080')

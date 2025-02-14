@@ -2,4 +2,4 @@ pillow~=11.1.0
 Flask~=3.1.0
 rembg~=2.0.62
 onnxruntime~=1.20.1
-gunicorn~=23.0.0
+waitress~=3.0.2

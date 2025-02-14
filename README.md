@@ -69,7 +69,7 @@ authentication.
 
     - Copy the generated key, and either set it as an environment variable (`API_KEY`) or place it in `config.py`.
 
-2. **Run the server**:
+2. **Run the server** (production mode using Waitress):
 
    ```bash
    python app.py

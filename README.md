@@ -1,8 +1,8 @@
 # BackgroundRemoverAPI
 
 A simple Flask-based API that removes the background from an uploaded image.  
-It uses the [rembg](https://github.com/danielgatis/rembg) library for background removal, and it provides API key-based
-authentication.
+It uses the [rembg](https://github.com/danielgatis/rembg) library for background removal and provides an additional
+route for **signature background removal** using OpenCV and Otsu-based thresholding. The API is secured with an API key.
 
 ---
 
@@ -22,36 +22,36 @@ authentication.
 ## Features
 
 - **Background removal** using the `rembg` library.
-- **API key authentication** to secure the endpoints.
-- **Supports both synchronous and asynchronous processing** for improved performance.
+- **Signature background removal** using OpenCV with Otsu's thresholding (no AI).
+- **API key authentication** for secure endpoints.
+- **Synchronous and asynchronous processing** for improved performance.
 - **Task-based processing** with status tracking.
-- **Easy deployment** on DigitalOcean or any cloud provider.
-- Includes a script to **generate new API keys**.
+- **Script for generating API keys**.
 
 ---
 
 ## Installation
 
-1. Clone the repository:
+1. **Clone the repository**:
 
    ```bash
    git clone https://your-repo-url background_remover_api
    ```
 
-2. Change directory:
+2. **Change directory**:
 
    ```bash
    cd background_remover_api
    ```
 
-3. Create and activate a virtual environment (optional but recommended):
+3. **Create and activate a virtual environment** (optional, but recommended):
 
    ```bash
    python3 -m venv venv
    source venv/bin/activate  # On Windows use `venv\\Scripts\\activate`
    ```
 
-4. Install dependencies:
+4. **Install dependencies**:
 
    ```bash
    pip install -r requirements.txt
@@ -66,8 +66,7 @@ authentication.
    ```bash
    python generate_api_key.py
    ```
-
-    - Copy the generated key, and either set it as an environment variable (`API_KEY`) or place it in `config.py`.
+   Copy the generated key, and either set it as an environment variable (`API_KEY`) or place it in `config.py`.
 
 2. **Run the server** (production mode using Waitress):
 
@@ -75,20 +74,18 @@ authentication.
    python app.py
    ```
 
-3. The API will be running at `http://localhost:8080` by default.
+3. By default, the API will be running at `http://localhost:8080`.
 
 ---
 
 ## Environment Variables
 
-To avoid storing sensitive keys in the code, you can set the `API_KEY` environment variable on your system or directly
-in the DigitalOcean droplet settings. For example:
+To avoid storing sensitive keys in the code, you can set the `API_KEY` environment variable on your system or
+in your deployment environment. For example:
 
 ```bash
 export API_KEY="YOUR_SECURE_KEY_HERE"
 ```
-
-Or in DigitalOcean App Platform, set the environment variable in the project's "Settings" -> "Environment Variables".
 
 ---
 
@@ -96,29 +93,24 @@ Or in DigitalOcean App Platform, set the environment variable in the project's "
 
 ### 1. **Health Check**
 
-**URL**: `GET /`  
-**Response**:
+- **URL**: `GET /`
+- **Response**:
+  ```json
+  {
+    "message": "BackgroundRemoverAPI is up and running."
+  }
+  ```
 
-```json
-{
-  "message": "BackgroundRemoverAPI is up and running."
-}
-```
+### 2. **Remove Background (Synchronous)**
 
-### 2. **Remove Background (Synchronous Processing)**
+- **URL**: `POST /remove-bg`
+- **Headers**:
+    - `X-API-KEY: YOUR_API_KEY_HERE`
+- **Body** (`multipart/form-data`):
+    - `image`: the file to be processed (jpg, png, etc.)
+- **Response**: PNG image with removed background.
 
-**URL**: `POST /remove-bg`  
-**Headers**:
-
-- `X-API-KEY: YOUR_API_KEY_HERE`
-
-**Body** (`multipart/form-data`):
-
-- `image`: The image file (jpg, png, etc.) to be processed.
-
-**Response**: Returns a PNG image with the background removed.
-
-**Example using `curl`**:
+**Example**:
 
 ```bash
 curl -X POST \
@@ -127,27 +119,22 @@ curl -X POST \
   http://localhost:8080/remove-bg --output output.png
 ```
 
-### 3. **Remove Background (Asynchronous Processing)**
+### 3. **Remove Background (Asynchronous)**
 
-**URL**: `POST /remove-bg-async`  
-**Headers**:
+- **URL**: `POST /remove-bg-async`
+- **Headers**:
+    - `X-API-KEY: YOUR_API_KEY_HERE`
+- **Body** (`multipart/form-data`):
+    - `image`: the file to be processed
+- **Response**:
+  ```json
+  {
+    "task_id": "your-task-id",
+    "message": "Processing started, check status later."
+  }
+  ```
 
-- `X-API-KEY: YOUR_API_KEY_HERE`
-
-**Body** (`multipart/form-data`):
-
-- `image`: The image file (jpg, png, etc.) to be processed.
-
-**Response**:
-
-```json
-{
-  "task_id": "your-task-id",
-  "message": "Processing started, check status later."
-}
-```
-
-**Example using `curl`**:
+**Example**:
 
 ```bash
 curl -X POST \
@@ -158,34 +145,55 @@ curl -X POST \
 
 ### 4. **Check Task Status**
 
-**URL**: `GET /task-status/<task_id>`  
-**Response**:
-
-```json
-{
-  "task_id": "your-task-id",
-  "status": "queued | processing | completed | failed"
-}
-```
+- **URL**: `GET /task-status/<task_id>`
+- **Response**:
+  ```json
+  {
+    "task_id": "your-task-id",
+    "status": "queued | processing | completed | failed"
+  }
+  ```
 
 ### 5. **Retrieve Processed Image**
 
-**URL**: `GET /get-result/<task_id>`  
-**Response**: Returns a PNG image if processing is completed.
+- **URL**: `GET /get-result/<task_id>`
+- **Response**: A PNG image if the task is completed.
 
-**Example using `curl`**:
+**Example**:
 
 ```bash
 curl -X GET http://localhost:8080/get-result/your-task-id --output output.png
+```
+
+### 6. **Remove Signature Background (Otsu-based Processing)**
+
+- **URL**: `POST /remove-signature-bg`
+- **Headers**:
+    - `X-API-KEY: YOUR_API_KEY_HERE`
+- **Body** (`multipart/form-data`):
+    - `image`: the signature image (jpg, png, etc.)
+    - `width` (int): optional final width
+    - `height` (int): optional final height
+- **Response**: A PNG image with a transparent background.
+
+**Example**:
+
+```bash
+curl -X POST \
+  -H "X-API-KEY: YOUR_API_KEY_HERE" \
+  -F "image=@/path/to/signature.png" \
+  -F "width=600" \
+  -F "height=200" \
+  http://localhost:8080/remove-signature-bg --output signature_transparent.png
 ```
 
 ---
 
 ## Security
 
-- This project uses a simple API Key mechanism.
-- For production, ensure that HTTPS is used so the API key is sent securely.
-- Avoid exposing the API key in client-side applications.
+- Simple API key mechanism.
+- For production, always use HTTPS so the API key is sent securely.
+- Avoid exposing the API key in client-side code.
 
 ---
 

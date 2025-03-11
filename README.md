@@ -66,6 +66,7 @@ route for **signature background removal** using OpenCV and Otsu-based threshold
    ```bash
    python generate_api_key.py
    ```
+
    Copy the generated key, and either set it as an environment variable (`API_KEY`) or place it in `config.py`.
 
 2. **Run the server** (production mode using Waitress):
@@ -95,6 +96,7 @@ export API_KEY="YOUR_SECURE_KEY_HERE"
 
 - **URL**: `GET /`
 - **Response**:
+
   ```json
   {
     "message": "BackgroundRemoverAPI is up and running."
@@ -127,6 +129,7 @@ curl -X POST \
 - **Body** (`multipart/form-data`):
     - `image`: the file to be processed
 - **Response**:
+
   ```json
   {
     "task_id": "your-task-id",
@@ -147,6 +150,7 @@ curl -X POST \
 
 - **URL**: `GET /task-status/<task_id>`
 - **Response**:
+
   ```json
   {
     "task_id": "your-task-id",

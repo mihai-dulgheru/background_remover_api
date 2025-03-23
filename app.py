@@ -44,7 +44,8 @@ def validate_request():
     return file.read(), None, None
 
 
-@app.route("/")
+@app.route("/") # Deprecated
+@app.route("/health-check")
 def index():
     """
     Root endpoint providing a health check message.
@@ -53,7 +54,8 @@ def index():
     return jsonify({"message": "BackgroundRemoverAPI is up and running."}), 200
 
 
-@app.route("/remove-bg", methods=["POST"])
+@app.route("/remove-bg", methods=["POST"]) # Deprecated
+@app.route("/clean-signature", methods=["POST"])
 def remove_background():
     """
     Synchronously remove the background from an uploaded image.
